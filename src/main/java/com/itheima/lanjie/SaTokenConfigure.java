@@ -29,6 +29,7 @@ public class SaTokenConfigure implements WebMvcConfigurer {
                 .addPathPatterns("/**")  // 拦截所有路径
                 .excludePathPatterns(  // 放行静态资源
                         "/**/*.html",        // 放行所有html文件
+                        "/**/*.html",        // 放行所有html文件
                         "/**/*.js",          // 放行所有js文件
                         "/**/*.css",         // 放行所有css文件
                         "/static/**",        // 放行静态资源目录下的文件
@@ -58,7 +59,7 @@ public class SaTokenConfigure implements WebMvcConfigurer {
 
                 // 指定 拦截路由 与 放行路由
                 .addInclude("/**")
-                .addExclude(
+                .addExclude("/img/**",
                         "/favicon.ico",
                         "/**/*.html", "/**/*.js", "/**/*.css",
                         "/static/**", "/images/**", "/js/**", "/css/**", "/element-ui/**",

@@ -1,84 +1,136 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>用户登录</title>
+    <title>EL-Admin 用户登录</title>
     <link rel="stylesheet" href="element-ui/lib/theme-chalk/index.css">
     <script src="js/vue.js"></script>
     <script src="element-ui/lib/index.js"></script>
     <style>
-        body, html {
+        body {
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
-        }
-        .container { /* 假设你的内容包裹在一个容器中 */
-            width: 100%;
-            max-width: 1200px; /* 限制最大宽度，桌面端美观 */
-            margin: 0 auto;
-            padding: 10px;
-        }
-        /* 手机端调整 */
-        @media (max-width: 768px) {
-            .container {
-                padding: 5px;
-            }
-        }
-        body {
-            background-color: #f2f2f2;
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: #f5f6fa;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            margin: 0;
         }
 
-        .login-container {
-            width: 350px;
-            padding: 30px;
+        .page-container {
+            display: flex;
+            width: 900px;
+            height: 500px;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 左侧背景图 */
+        .left-banner {
+            width: 55%;
+            background-image: url('/static/js/img/login.jpg');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            position: relative;
+        }
+
+        .left-banner::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+        }
+
+        .banner-content {
+            position: relative;
             text-align: center;
+            z-index: 2;
+        }
+
+        .banner-title {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .banner-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* 右侧登录框 */
+        .login-container {
+            width: 45%;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         .login-title {
-            font-size: 24px;
+            font-size: 22px;
             margin-bottom: 20px;
             color: #333;
+            text-align: center;
+            font-weight: 600;
         }
 
         .register-link {
-            margin-top: 10px;
+            margin-top: 15px;
             font-size: 14px;
             color: #409EFF;
+            text-align: center;
             cursor: pointer;
         }
 
         .register-link:hover {
             text-decoration: underline;
         }
+
+        .el-button {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
 <div id="app">
-    <div class="login-container">
-        <h2 class="login-title">用户登录</h2>
-        <el-form :model="loginForm" ref="loginForm" label-width="80px">
-            <el-form-item label="用户名">
-                <el-input v-model="loginForm.username" placeholder="请输入用户名"></el-input>
-            </el-form-item>
-            <el-form-item label="密码">
-                <el-input type="password" v-model="loginForm.password" placeholder="请输入密码" show-password></el-input>
-            </el-form-item>
-            <el-form-item>
-                <el-button type="primary" @click="handleLogin" :loading="loading">登 录</el-button>
-            </el-form-item>
-        </el-form>
-        <div class="register-link" @click="redirectToRegister">没有账号？点击注册</div>
+    <div class="page-container">
+        <!-- 左侧背景 -->
+        <div class="left-banner">
+            <div class="banner-content">
+                <div class="banner-title">EL-Admin</div>
+                <div class="banner-subtitle">简洁 · 专业 · 高效 的管理系统</div>
+            </div>
+        </div>
+
+        <!-- 右侧登录表单 -->
+        <div class="login-container">
+            <h2 class="login-title">用户登录</h2>
+            <el-form :model="loginForm" ref="loginForm" label-width="80px">
+                <el-form-item label="用户名">
+                    <el-input v-model="loginForm.username" placeholder="请输入用户名"></el-input>
+                </el-form-item>
+                <el-form-item label="密码">
+                    <el-input type="password" v-model="loginForm.password" placeholder="请输入密码" show-password></el-input>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" @click="handleLogin" :loading="loading">登 录</el-button>
+                </el-form-item>
+            </el-form>
+            <div class="register-link" @click="redirectToRegister">没有账号？点击注册</div>
+        </div>
     </div>
 </div>
 
@@ -88,8 +140,8 @@
         data() {
             return {
                 loginForm: {
-                    username: "admin",
-                    password: "adminadmin"
+                    username: "",
+                    password: ""
                 },
                 loading: false
             };
@@ -113,10 +165,10 @@
                     .then(data => {
                         this.loading = false;
                         if (data.code === 200) {
-                            localStorage.setItem("token", data.token);  // 存储 token
+                            localStorage.setItem("token", data.token);
                             this.$message.success("登录成功！");
                             setTimeout(() => {
-                                window.location.href = "index.html";  // 跳转到首页
+                                window.location.href = "index.html";
                             }, 1000);
                         } else {
                             this.$message.error(data.msg || "登录失败");
@@ -128,9 +180,7 @@
                         this.$message.error("服务器错误，请稍后再试");
                     });
             },
-
             redirectToRegister() {
-                // 跳转到注册页面
                 window.location.href = "register.html";
             }
         }

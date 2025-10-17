@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.validation.Valid;
 import java.util.*;
 
 @RestController
@@ -86,16 +87,12 @@ public class UserController {
 
     @OperationDesc("用户注册")
     @RequestMapping(value = "doRegister", method = RequestMethod.POST)
-    public SaResult doRegister(@RequestBody Map<String, String> params) {
-        String username = params.get("username");
-        String email = params.get("email");
-        String password = params.get("password");
-        String confirmPassword = params.get("confirmPassword");
+    public SaResult doRegister(@Valid @RequestBody Users newUser) {
+        String username = newUser.getUsername();
+        String email = newUser.getEmail();
+        String password = newUser.getPassword();
+        String confirmPassword = newUser.getConfirmPassword();
 
-        if (username == null || email == null || password == null || confirmPassword == null) {
-            LogUtils.warn("注册失败，所有字段均为必填: params={}", params);
-            return SaResult.error("请填写所有字段");
-        }
         if (!password.equals(confirmPassword)) {
             LogUtils.warn("注册失败，密码和确认密码不匹配: username={}", username);
             return SaResult.error("密码和确认密码不匹配");
@@ -137,8 +134,6 @@ public class UserController {
 
             String encryptedPassword = AESUtil.encrypt(password);
 
-            Users newUser = new Users();
-            newUser.setUsername(username);
             newUser.setEmail(email);
             newUser.setPassword(encryptedPassword);
             newUser.setRegistrationIp(clientIp);

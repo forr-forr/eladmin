@@ -3,14 +3,22 @@ package com.itheima.config;
 import cn.dev33.satoken.exception.NotLoginException;
 import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.util.SaResult;
+import com.itheima.controller.UserController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import javax.servlet.http.HttpServletRequest;
+import java.util.stream.Collectors;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    
+    private static final Logger LogUtils = LoggerFactory.getLogger(UserController.class);
+
     @ExceptionHandler(NotLoginException.class)
     public ResponseEntity<SaResult> handlerNotLoginException(NotLoginException nle) {
 
@@ -42,5 +50,30 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(SaResult.code(403).setMsg("权限不足"));
     }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<SaResult> handleValidationExceptions(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request) {
+
+        String ip = request.getRemoteAddr();
+        String uri = request.getRequestURI();
+
+        String errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+
+        LogUtils.warn("参数验证失败 | IP={} | URI={} | {}", ip, uri, errors);
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(SaResult.error("参数验证失败: " + errors));
+    }
+
+    // --- 兜底异常 ---
+//    @ExceptionHandler(Exception.class)
+//    public ResponseEntity<SaResult> handleOtherExceptions(Exception ex) {
+//        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                .body(SaResult.error("系统异常: " + ex.getMessage()));
+//    }
 
 }
