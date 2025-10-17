@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
+import com.itheima.config.Operation.NotLog;
 import com.itheima.config.Operation.OperationDesc;
 import com.itheima.mapper.user.UserMapper;
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ public class PermissionController {
     @SaCheckLogin
     @SaCheckPermission("permission:read")
     @GetMapping("/list")
+    @NotLog
     public SaResult getAllPermissions() {
         // 权限检查（确保用户角色为 root 或 admin）
         List<String> roles = StpUtil.getRoleList();

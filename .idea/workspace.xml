@@ -2,17 +2,19 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="d9997c30-96aa-46a3-828f-35931853e991" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/itheima/config/Operation/OperationLogAspect.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/itheima/controller/UserOperationLogController.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/itheima/mapper/log/UserOperationLogMapper.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/itheima/mapper/log/UserOperationLogService.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/itheima/mapper/log/UserOperationLogServiceImpl.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/com/itheima/pogo/UserOperationLog.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/pom.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/config/HelloClientInterceptor.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/controller/ProjectController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/controller/modules/PublicModulesController.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/mapper/ProjectMapper.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/mapper/modules/PublicModulesMapper.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/pogo/Project.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/pogo/modules/PublicModules.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/serice/ProjectService.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/serice/impl/ProjectServiceImpl.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/itheima/controller/admin/UserManageController.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/itheima/controller/admin/UserManageController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/static/login.html" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/resources/static/login.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/com/itheima/controller/admin/UserManageController.class" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/com/itheima/controller/admin/UserManageController.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/target/classes/static/login.html" beforeDir="false" afterPath="$PROJECT_DIR$/target/classes/static/login.html" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,7 +60,7 @@
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="aspect.path.notification.shown" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/src/main/java/com/itheima/mapper/log" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
     <property name="node.js.path.for.package.eslint" value="project" />
@@ -68,7 +70,11 @@
     <property name="settings.editor.selected.configurable" value="settings.github" />
   </component>
   <component name="RecentsManager">
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="com.itheima.config.Operation" />
+    </key>
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Project\eladmin\src\main\java\com\itheima\mapper\log" />
       <recent name="D:\Project\eladmin\src\main\resources" />
     </key>
   </component>
@@ -104,7 +110,7 @@
       <option name="presentableId" value="Default" />
       <updated>1760685964608</updated>
       <workItem from="1760685967700" duration="592000" />
-      <workItem from="1760686573013" duration="3243000" />
+      <workItem from="1760686573013" duration="5746000" />
     </task>
     <task id="LOCAL-00001" summary="脚手架">
       <created>1760688835964</created>
@@ -127,7 +133,14 @@
       <option name="project" value="LOCAL" />
       <updated>1760689487040</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="新2">
+      <created>1760690363615</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1760690363615</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -136,17 +149,22 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="脚手架" />
     <MESSAGE value="新" />
-    <option name="LAST_COMMIT_MESSAGE" value="新" />
+    <MESSAGE value="新2" />
+    <option name="LAST_COMMIT_MESSAGE" value="新2" />
   </component>
   <component name="WindowStateProjectService">
+    <state x="2472" y="179" key="#Inspections" timestamp="1760692470753">
+      <screen x="1920" y="0" width="1920" height="1040" />
+    </state>
+    <state x="2472" y="179" key="#Inspections/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760692470753" />
     <state x="2610" y="267" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1760689950956">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
     <state x="2610" y="267" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760689950956" />
-    <state x="2210" y="111" width="1213" height="817" key="CommitChangelistDialog2" timestamp="1760689486095">
+    <state x="2210" y="111" width="1213" height="817" key="CommitChangelistDialog2" timestamp="1760690361214">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state x="2210" y="111" width="1213" height="817" key="CommitChangelistDialog2/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760689486095" />
+    <state x="2210" y="111" width="1213" height="817" key="CommitChangelistDialog2/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690361214" />
     <state x="2660" y="261" key="FileChooserDialogImpl" timestamp="1760687994235">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
@@ -155,49 +173,49 @@
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
     <state x="2755" y="411" width="496" height="291" key="Github.ShareDialog/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760688919534" />
-    <state width="1877" height="527" key="GridCell.Tab.0.bottom" timestamp="1760690123818">
+    <state width="1877" height="339" key="GridCell.Tab.0.bottom" timestamp="1760693125699">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="527" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690123818" />
-    <state width="1877" height="527" key="GridCell.Tab.0.center" timestamp="1760690123818">
+    <state width="1877" height="339" key="GridCell.Tab.0.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760693125699" />
+    <state width="1877" height="339" key="GridCell.Tab.0.center" timestamp="1760693125699">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="527" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690123818" />
-    <state width="1877" height="527" key="GridCell.Tab.0.left" timestamp="1760690123818">
+    <state width="1877" height="339" key="GridCell.Tab.0.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760693125699" />
+    <state width="1877" height="339" key="GridCell.Tab.0.left" timestamp="1760693125699">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="527" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690123818" />
-    <state width="1877" height="527" key="GridCell.Tab.0.right" timestamp="1760690123818">
+    <state width="1877" height="339" key="GridCell.Tab.0.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760693125699" />
+    <state width="1877" height="339" key="GridCell.Tab.0.right" timestamp="1760693125699">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="527" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690123818" />
-    <state width="1877" height="527" key="GridCell.Tab.1.bottom" timestamp="1760690123818">
+    <state width="1877" height="339" key="GridCell.Tab.0.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760693125699" />
+    <state width="1877" height="339" key="GridCell.Tab.1.bottom" timestamp="1760693125700">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="527" key="GridCell.Tab.1.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690123818" />
-    <state width="1877" height="527" key="GridCell.Tab.1.center" timestamp="1760690123818">
+    <state width="1877" height="339" key="GridCell.Tab.1.bottom/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760693125700" />
+    <state width="1877" height="339" key="GridCell.Tab.1.center" timestamp="1760693125699">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="527" key="GridCell.Tab.1.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690123818" />
-    <state width="1877" height="527" key="GridCell.Tab.1.left" timestamp="1760690123818">
+    <state width="1877" height="339" key="GridCell.Tab.1.center/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760693125699" />
+    <state width="1877" height="339" key="GridCell.Tab.1.left" timestamp="1760693125699">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="527" key="GridCell.Tab.1.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690123818" />
-    <state width="1877" height="527" key="GridCell.Tab.1.right" timestamp="1760690123818">
+    <state width="1877" height="339" key="GridCell.Tab.1.left/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760693125699" />
+    <state width="1877" height="339" key="GridCell.Tab.1.right" timestamp="1760693125699">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state width="1877" height="527" key="GridCell.Tab.1.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690123818" />
+    <state width="1877" height="339" key="GridCell.Tab.1.right/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760693125699" />
     <state x="2381" y="162" key="SettingsEditor" timestamp="1760688833755">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
     <state x="2381" y="162" key="SettingsEditor/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760688833755" />
-    <state x="2472" y="253" key="Vcs.Push.Dialog.v2" timestamp="1760689416109">
+    <state x="2472" y="253" key="Vcs.Push.Dialog.v2" timestamp="1760690390226">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state x="2472" y="253" key="Vcs.Push.Dialog.v2/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760689416109" />
-    <state x="2487" y="220" width="786" height="600" key="find.popup" timestamp="1760690144939">
+    <state x="2472" y="253" key="Vcs.Push.Dialog.v2/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690390226" />
+    <state x="2487" y="220" width="786" height="600" key="find.popup" timestamp="1760693195500">
       <screen x="1920" y="0" width="1920" height="1040" />
     </state>
-    <state x="2487" y="220" width="786" height="600" key="find.popup/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760690144939" />
+    <state x="2487" y="220" width="786" height="600" key="find.popup/0.0.1920.1040/1920.0.1920.1040@1920.0.1920.1040" timestamp="1760693195500" />
   </component>
 </project>

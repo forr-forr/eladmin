@@ -6,6 +6,7 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.itheima.config.Operation.NotLog;
 import com.itheima.config.Operation.OperationDesc;
 import com.itheima.mapper.user.UserMapper;
 import com.itheima.pogo.Users;
@@ -41,6 +42,7 @@ public class UserManageController {
     @SaCheckLogin
     @SaCheckPermission("user:read:all")
     @GetMapping("/list")
+    @NotLog
     public SaResult getAllUsers(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int pageSize,
@@ -296,13 +298,11 @@ public class UserManageController {
         }
     }
 
-    /**
-     * 删除用户
-     */
     @OperationDesc("删除用户")
     @SaCheckLogin
     @SaCheckPermission("user:delete")
     @PostMapping("/delete")
+    @Transactional
     public SaResult deleteUser(@RequestBody Map<String, Integer> params) {
         Integer userId = params.get("userId");
 
@@ -317,32 +317,35 @@ public class UserManageController {
             return SaResult.error("用户不存在");
         }
 
-        //查询冻结的是否是自己
         int loginIdAsInt = StpUtil.getLoginIdAsInt();
-        if (user.getId()==loginIdAsInt){
+        if (user.getId() == loginIdAsInt) {
             LogUtils.warn("禁止自己刪除自己 userId={}", userId);
             return SaResult.error("禁止自刪");
         }
 
-
-        int result = 0;
         try {
-            result = userMapper.deleteById(userId);
-        } catch (Exception e) {
-            return  SaResult.error("禁止删除用户-500");
-        }
-        if (result > 0) {
+            // 1️⃣ 先删除 user_roles 中的关系
             userMapper.deleteUserRole(userId);
-            if (StpUtil.isLogin(userId)) {
-                StpUtil.logout(userId);
+
+            // 2️⃣ 再删除 users 表
+            int result = userMapper.deleteById(userId);
+
+            if (result > 0) {
+                if (StpUtil.isLogin(userId)) {
+                    StpUtil.logout(userId);
+                }
+                LogUtils.info("管理员删除用户成功：userId={}", userId);
+                return SaResult.ok("删除用户成功");
+            } else {
+                LogUtils.error("删除用户失败，数据库删除失败：userId={}", userId);
+                return SaResult.error("删除用户失败");
             }
-            LogUtils.info("管理员删除用户成功：userId={}", userId);
-            return SaResult.ok("删除用户成功");
-        } else {
-            LogUtils.error("删除用户失败，数据库删除失败：userId={}", userId);
-            return SaResult.error("删除用户失败");
+        } catch (Exception e) {
+            LogUtils.error("删除用户异常：userId={}，error={}", userId, e.getMessage(), e);
+            return SaResult.error("删除用户异常：" + e.getMessage());
         }
     }
+
 
     /**
      * 批量删除用户
