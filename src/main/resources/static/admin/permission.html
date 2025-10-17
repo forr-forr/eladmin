@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>权限管理</title>
+    <link rel="stylesheet" href="../element-ui/lib/theme-chalk/index.css">
+    <script src="../js/vue.js"></script>
+    <script src="../element-ui/lib/index.js"></script>
+    <script src="../js/axios-0.18.0.js"></script>
+</head>
+<body>
+<style>
+    /* 解决表格高度溢出问题，增加滚动条 */
+    .table-container {
+        /* 设置一个固定的最大高度，以触发滚动 */
+        max-height: calc(100vh - 200px);
+        /* 根据您的页面布局，可能需要调整此值 */
+        overflow-y: auto; /* 允许垂直滚动 */
+    }
+
+    /* 固定表格头样式，防止滚动时表头也跟着滚动 */
+    .fixed-header th {
+        background-color: #f5f7fa;
+    }
+</style>
+<div id="app" v-if="hasPermission('permission:read')">
+    <el-form inline>
+        <el-form-item>
+            <el-button type="primary" icon="el-icon-plus" @click="showAddPermissionDialog" :disabled="!hasPermission('permission:insert')">添加权限</el-button>
+            <el-button type="danger" icon="el-icon-delete" @click="batchDeletePermissions" :disabled="!hasPermission('permission:delete')">批量删除</el-button>
+        </el-form-item>
+    </el-form>
+
+    <div class="table-container">
+        <el-table
+                :data="permissionTableData"
+                v-loading="permissionLoading"
+                border
+                @selection-change="handlePermissionSelectionChange"
+                :header-cell-class-name="'fixed-header'"
+                class="permission-table">
+            <el-table-column type="selection" width="50"></el-table-column>
+            <el-table-column prop="id" label="权限ID" width="100" align="center"></el-table-column>
+            <el-table-column prop="name" label="权限名称" width="150" align="center"></el-table-column>
+            <el-table-column prop="description" label="权限描述" width="200" align="center"></el-table-column>
+            <el-table-column prop="createdAt" label="创建时间" width="180" align="center">
+                <template slot-scope="scope">
+                    {{ formatDate(scope.row.createdAt) }}
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200" align="center">
+                <template slot-scope="scope">
+                    <el-button type="primary" size="small" @click="showEditPermissionDialog(scope.row)" :disabled="!hasPermission('permission:update')">编辑</el-button>
+                    <el-button type="danger" size="small" @click="deletePermission(scope.row)" :disabled="!hasPermission('permission:delete')">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </div>
+
+    <el-dialog
+            :visible.sync="addPermissionDialogVisible"
+            title="添加权限"
+            width="500px"
+            :before-close="handleAddPermissionDialogClose">
+        <el-form :model="addPermissionForm" :rules="addPermissionRules" ref="addPermissionForm" label-width="100px">
+            <el-form-item label="权限名称" prop="name">
+                <el-input v-model="addPermissionForm.name" placeholder="请输入权限名称"></el-input>
+            </el-form-item>
+            <el-form-item label="描述" prop="description">
+                <el-input v-model="addPermissionForm.description" placeholder="请输入权限描述" type="textarea"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="handleAddPermissionDialogClose">取消</el-button>
+            <el-button type="primary" @click="confirmAddPermission">确定</el-button>
+        </div>
+    </el-dialog>
+
+    <el-dialog
+            :visible.sync="editPermissionDialogVisible"
+            title="编辑权限"
+            width="500px"
+            :before-close="handleEditPermissionDialogClose">
+        <el-form :model="editPermissionForm" :rules="editPermissionRules" ref="editPermissionForm" label-width="100px">
+            <el-form-item label="权限ID" prop="id">
+                <el-input v-model="editPermissionForm.id" readonly></el-input>
+            </el-form-item>
+            <el-form-item label="权限名称" prop="name">
+                <el-input v-model="editPermissionForm.name" placeholder="请输入权限名称"></el-input>
+            </el-form-item>
+            <el-form-item label="描述" prop="description">
+                <el-input v-model="editPermissionForm.description" placeholder="请输入权限描述" type="textarea"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="handleEditPermissionDialogClose">取消</el-button>
+            <el-button type="primary" @click="confirmEditPermission">确定</el-button>
+        </div>
+    </el-dialog>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            permissionTableData: [],
+            permissionLoading: false,
+            userRoles: [],
+            userPermissions: [],
+            selectedPermissions: [],
+            addPermissionDialogVisible: false,
+            editPermissionDialogVisible: false,
+            addPermissionForm: {
+                name: '',
+                description: ''
+            },
+            addPermissionRules: {
+                name: [
+                    { required: true, message: '请输入权限名称', trigger: 'blur' },
+                    { max: 50, message: '权限名称长度不能超过 50 个字符', trigger: 'blur' }
+                ],
+                description: [
+                    { max: 255, message: '描述长度不能超过 255 个字符', trigger: 'blur' }
+                ]
+            },
+            editPermissionForm: {
+                id: null,
+                name: '',
+                description: ''
+            },
+            editPermissionRules: {
+                name: [
+                    { required: true, message: '请输入权限名称', trigger: 'blur' },
+                    { max: 50, message: '权限名称长度不能超过 50 个字符', trigger: 'blur' }
+                ],
+                description: [
+                    { max: 255, message: '描述长度不能超过 255 个字符', trigger: 'blur' }
+                ]
+            }
+        },
+        beforeMount() {
+            const storedRoles = JSON.parse(localStorage.getItem("userRoles") || "[]");
+            const storedPermissions = JSON.parse(localStorage.getItem("userPermissions") || "[]");
+            console.log("Stored Roles:", storedRoles);
+            console.log("Stored Permissions:", storedPermissions);
+
+            this.userRoles = storedRoles;
+            this.userPermissions = storedPermissions;
+
+            // 检查是否有 permission:read 权限
+            if (!this.hasPermission('permission:read')) {
+                console.log("No permission:read permission, redirecting...");
+                alert('你没有权限访问这个页面');
+                // 刷新整个页面
+                parent.location.reload();
+                return;
+            }
+
+            this.fetchPermissions();
+        },
+        methods: {
+            /**
+             * 检查用户是否拥有指定权限。
+             * @param {string|string[]} permission 权限名称或权限数组
+             * @returns {boolean} 是否拥有权限
+             */
+            hasPermission(permission) {
+                if (Array.isArray(permission)) {
+                    return this.userPermissions.some(perm => permission.includes(perm));
+                }
+                return this.userPermissions.includes(permission);
+            },
+            /**
+             * 格式化日期为本地时间字符串。
+             * @param {string} date 日期字符串
+             * @returns {string} 格式化后的日期字符串
+             */
+            formatDate(date) {
+                if (!date) return "暂无数据";
+                return new Date(date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+            },
+            /**
+             * 获取所有权限列表。
+             */
+            fetchPermissions() {
+                this.permissionLoading = true;
+                axios.get('/manage/permission/list')
+                    .then(response => {
+                        if (response.data && response.data.code === 200) {
+                            this.permissionTableData = response.data.data || [];
+                            this.$message({ message: '权限数据获取成功[' + this.permissionTableData.length + "]", type: 'success' });
+                        } else {
+                            this.$message.error(response.data.msg || '数据格式错误！');
+                        }
+                    })
+                    .catch(error => {
+                        this.$message.error('查询权限失败！' + (error.response?.data?.msg || error.message));
+                    })
+                    .finally(() => {
+                        this.permissionLoading = false;
+                    });
+            },
+            /**
+             * 显示添加权限弹窗。
+             */
+            showAddPermissionDialog() {
+                this.addPermissionDialogVisible = true;
+                this.$nextTick(() => {
+                    if (this.$refs.addPermissionForm) {
+                        this.$refs.addPermissionForm.resetFields();
+                    }
+                });
+            },
+            /**
+             * 关闭添加权限弹窗。
+             * @param {Function} done 关闭回调
+             */
+            handleAddPermissionDialogClose(done) {
+                if (this.$refs.addPermissionForm) {
+                    this.$refs.addPermissionForm.resetFields();
+                }
+                this.addPermissionDialogVisible = false;
+                done();
+            },
+            /**
+             * 确认添加权限。
+             */
+            confirmAddPermission() {
+                this.$refs.addPermissionForm.validate((valid) => {
+                    if (valid) {
+                        axios.post('/manage/permission/add', this.addPermissionForm, {
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                            .then(response => {
+                                if (response.data.code === 200) {
+                                    this.$message.success('添加权限成功');
+                                    this.addPermissionDialogVisible = false;
+                                    this.fetchPermissions();
+                                } else {
+                                    this.$message.error(response.data.msg || '添加权限失败');
+                                }
+                            })
+                            .catch(error => {
+                                this.$message.error('添加权限失败：' + (error.response?.data?.msg || error.message));
+                            });
+                    } else {
+                        this.$message.error('请填写完整信息');
+                    }
+                });
+            },
+            /**
+             * 显示编辑权限弹窗。
+             * @param {Object} row 权限数据
+             */
+            showEditPermissionDialog(row) {
+                this.editPermissionForm.id = row.id;
+                this.editPermissionForm.name = row.name;
+                this.editPermissionForm.description = row.description;
+                this.editPermissionDialogVisible = true;
+            },
+            /**
+             * 关闭编辑权限弹窗。
+             * @param {Function} done 关闭回调
+             */
+            handleEditPermissionDialogClose(done) {
+                if (this.$refs.editPermissionForm) {
+                    this.$refs.editPermissionForm.resetFields();
+                }
+                this.editPermissionDialogVisible = false;
+                done();
+            },
+            /**
+             * 确认编辑权限。
+             */
+            confirmEditPermission() {
+                this.$refs.editPermissionForm.validate((valid) => {
+                    if (valid) {
+                        axios.post('/manage/permission/update', this.editPermissionForm, {
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                            .then(response => {
+                                if (response.data.code === 200) {
+                                    this.$message.success('修改权限成功');
+                                    this.editPermissionDialogVisible = false;
+                                    this.fetchPermissions();
+                                } else {
+                                    this.$message.error(response.data.msg || '修改权限失败');
+                                }
+                            })
+                            .catch(error => {
+                                this.$message.error('修改权限失败：' + (error.response?.data?.msg || error.message));
+                            });
+                    } else {
+                        this.$message.error('请填写完整信息');
+                    }
+                });
+            },
+            /**
+             * 删除权限。
+             * @param {Object} row 权限数据
+             */
+            deletePermission(row) {
+                this.$confirm('确定删除权限 ' + row.name + ' 吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    axios.post('/manage/permission/delete', { permissionId: row.id }, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.$message.success('删除权限成功');
+                                this.fetchPermissions();
+                            } else {
+                                this.$message.error(response.data.msg || '删除权限失败');
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('删除权限失败：' + (error.response?.data?.msg || error.message));
+                        });
+                }).catch(() => {
+                    this.$message.info('已取消删除');
+                });
+            },
+            /**
+             * 批量删除权限。
+             */
+            batchDeletePermissions() {
+                if (!this.selectedPermissions || this.selectedPermissions.length === 0) {
+                    this.$message.warning("请先选择要删除的权限！");
+                    return;
+                }
+                this.$confirm('确定删除选中的 ' + this.selectedPermissions.length + ' 个权限吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    const permissionIds = this.selectedPermissions.map(row => row.id);
+                    axios.post('/manage/permission/batchDelete', permissionIds, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.$message.success(response.data.msg);
+                                this.fetchPermissions();
+                            } else {
+                                this.$message.error(response.data.msg || '批量删除失败');
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('批量删除失败：' + (error.response?.data?.msg || error.message));
+                        });
+                }).catch(() => {
+                    this.$message.info('已取消删除');
+                });
+            },
+            /**
+             * 处理权限表格的选择变化。
+             * @param {Array} selection 选中的权限
+             */
+            handlePermissionSelectionChange(selection) {
+                this.selectedPermissions = selection;
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "groups": [
+    {
+      "name": "api",
+      "type": "com.itheima.config.KeyConfig",
+      "sourceType": "com.itheima.config.KeyConfig"
+    }
+  ],
+  "properties": [
+    {
+      "name": "api.api-keys",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.itheima.config.KeyConfig"
+    }
+  ],
+  "hints": []
+}

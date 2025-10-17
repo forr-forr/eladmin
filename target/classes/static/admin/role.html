@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>角色管理</title>
+    <link rel="stylesheet" href="../element-ui/lib/theme-chalk/index.css">
+    <script src="../js/vue.js"></script>
+    <script src="../element-ui/lib/index.js"></script>
+    <script src="../js/axios-0.18.0.js"></script>
+</head>
+<body>
+<div id="app" v-if="hasPermission('role:read')">
+    <!-- 角色管理 -->
+    <el-form inline>
+        <el-form-item>
+            <el-button type="primary" icon="el-icon-plus" @click="showAddRoleDialog" :disabled="!hasPermission('role:insert')">添加角色</el-button>
+            <el-button type="danger" icon="el-icon-delete" @click="batchDeleteRoles" :disabled="!hasPermission('role:delete')">批量删除</el-button>
+        </el-form-item>
+    </el-form>
+
+    <div class="table-container">
+        <el-table
+                :data="roleTableData"
+                v-loading="roleLoading"
+                border
+                @selection-change="handleRoleSelectionChange"
+                :header-cell-class-name="'fixed-header'"
+                class="role-table">
+            <el-table-column type="selection" width="50"></el-table-column>
+            <el-table-column prop="id" label="角色ID" width="100" align="center"></el-table-column>
+            <el-table-column prop="name" label="角色名称" width="150" align="center"></el-table-column>
+            <el-table-column prop="description" label="角色描述" width="200" align="center"></el-table-column>
+            <el-table-column prop="createdAt" label="创建时间" width="180" align="center">
+                <template slot-scope="scope">
+                    {{ formatDate(scope.row.createdAt) }}
+                </template>
+            </el-table-column>
+            <el-table-column label="权限" width="600" align="center">
+                <template slot-scope="scope">
+                    <el-tag
+                            v-for="permission in scope.row.permissions"
+                            :key="permission.permissionId"
+                            type="info"
+                            style="margin-right: 5px; margin-bottom: 5px;">
+                        {{ permission.permissionDescription || permission.permissionName }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200" align="center">
+                <template slot-scope="scope">
+                    <el-button type="primary" size="small" @click="showEditRoleDialog(scope.row)" :disabled="!hasPermission('role:update')">编辑</el-button>
+                    <el-button type="danger" size="small" @click="deleteRole(scope.row)" :disabled="!hasPermission('role:delete')">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </div>
+
+    <!-- 添加角色弹窗 -->
+    <el-dialog
+            :visible.sync="addRoleDialogVisible"
+            title="添加角色"
+            width="500px"
+            :before-close="handleAddRoleDialogClose">
+        <el-form :model="addRoleForm" :rules="addRoleRules" ref="addRoleForm" label-width="100px">
+            <el-form-item label="角色名称" prop="name">
+                <el-input v-model="addRoleForm.name" placeholder="请输入角色名称"></el-input>
+            </el-form-item>
+            <el-form-item label="描述" prop="description">
+                <el-input v-model="addRoleForm.description" placeholder="请输入角色描述" type="textarea"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="handleAddRoleDialogClose">取消</el-button>
+            <el-button type="primary" @click="confirmAddRole">确定</el-button>
+        </div>
+    </el-dialog>
+
+    <!-- 编辑角色弹窗 -->
+    <el-dialog
+            :visible.sync="editRoleDialogVisible"
+            title="编辑角色"
+            width="1000px"
+            :before-close="handleEditRoleDialogClose">
+        <el-form :model="editRoleForm" :rules="editRoleRules" ref="editRoleForm" label-width="100px">
+            <el-form-item label="角色ID" prop="roleId">
+                <el-input v-model="editRoleForm.roleId" readonly></el-input>
+            </el-form-item>
+            <el-form-item label="角色名称" prop="name">
+                <el-input v-model="editRoleForm.name" placeholder="请输入角色名称"></el-input>
+            </el-form-item>
+            <el-form-item label="描述" prop="description">
+                <el-input v-model="editRoleForm.description" placeholder="请输入角色描述" type="textarea"></el-input>
+            </el-form-item>
+            <el-form-item label="权限" prop="permissions" style="width: 100%;">
+                <el-checkbox-group v-model="editRoleForm.permissions" class="permission-checkbox-group">
+                    <el-checkbox
+                            v-for="permission in allPermissions"
+                            :key="permission.id"
+                            :label="permission.id"
+                            :border="true">
+                        {{ permission.name }} ({{ permission.description || '无描述' }})
+                    </el-checkbox>
+                </el-checkbox-group>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="handleEditRoleDialogClose">取消</el-button>
+            <el-button type="primary" @click="confirmEditRole">确定</el-button>
+        </div>
+    </el-dialog>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            roleTableData: [],
+            roleLoading: false,
+            userRoles: [],
+            userPermissions: [],
+            selectedRoles: [],
+            addRoleDialogVisible: false,
+            editRoleDialogVisible: false,
+            addRoleForm: {
+                name: '',
+                description: ''
+            },
+            addRoleRules: {
+                name: [
+                    { required: true, message: '请输入角色名称', trigger: 'blur' },
+                    { max: 50, message: '角色名称长度不能超过 50 个字符', trigger: 'blur' }
+                ],
+                description: [
+                    { max: 255, message: '描述长度不能超过 255 个字符', trigger: 'blur' }
+                ]
+            },
+            editRoleForm: {
+                roleId: null,
+                name: '',
+                description: '',
+                permissions: [] // 存储选中的权限 ID 列表
+            },
+            editRoleRules: {
+                name: [
+                    { required: true, message: '请输入角色名称', trigger: 'blur' },
+                    { max: 50, message: '角色名称长度不能超过 50 个字符', trigger: 'blur' }
+                ],
+                description: [
+                    { max: 255, message: '描述长度不能超过 255 个字符', trigger: 'blur' }
+                ]
+            },
+            allPermissions: [] // 存储所有权限
+        },
+        beforeMount() {
+            const storedRoles = JSON.parse(localStorage.getItem("userRoles") || "[]");
+            const storedPermissions = JSON.parse(localStorage.getItem("userPermissions") || "[]");
+            console.log("Stored Roles:", storedRoles);
+            console.log("Stored Permissions:", storedPermissions);
+
+            this.userRoles = storedRoles;
+            this.userPermissions = storedPermissions;
+
+            if (!this.hasPermission('role:read')) {
+                console.log("No role:read permission, redirecting...");
+                alert('你没有权限访问这个页面');
+                // 刷新整个页面
+parent.location.reload();
+                return;
+            }
+
+            this.fetchRoles();
+            this.fetchAllPermissions();
+        },
+        methods: {
+            hasPermission(permission) {
+                if (Array.isArray(permission)) {
+                    return this.userPermissions.some(perm => permission.includes(perm));
+                }
+                return this.userPermissions.includes(permission);
+            },
+            formatDate(date) {
+                if (!date) return "暂无数据";
+                return new Date(date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+            },
+            fetchAllPermissions() {
+                axios.get('/manage/permission/list')
+                    .then(response => {
+                        if (response.data && response.data.code === 200) {
+                            this.allPermissions = response.data.data || [];
+                            this.$message.success('权限数据获取成功');
+                        } else {
+                            this.$message.error(response.data.msg || '获取权限失败');
+                        }
+                    })
+                    .catch(error => {
+                        this.$message.error('获取权限失败：' + (error.response?.data?.msg || error.message));
+                    });
+            },
+            fetchRoles() {
+                this.roleLoading = true;
+                axios.get('/manage/role/list')
+                    .then(response => {
+                        if (response.data && response.data.code === 200) {
+                            this.roleTableData = response.data.data || [];
+                            this.roleTableData.forEach(role => {
+                                axios.get('/manage/role/permissions', {
+                                    params: { roleId: role.id }
+                                })
+                                    .then(resp => {
+                                        if (resp.data && resp.data.code === 200) {
+                                            this.$set(role, 'permissions', resp.data.data || []);
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('获取角色权限失败：', error);
+                                    });
+                            });
+                            this.$message({ message: '角色数据获取成功[' + this.roleTableData.length + "]", type: 'success' });
+                        } else {
+                            this.$message.error(response.data.msg || '数据格式错误！');
+                        }
+                    })
+                    .catch(error => {
+                        this.$message.error('查询角色失败！' + (error.response?.data?.msg || error.message));
+                    })
+                    .finally(() => {
+                        this.roleLoading = false;
+                    });
+            },
+            showAddRoleDialog() {
+                this.addRoleDialogVisible = true;
+                this.$nextTick(() => {
+                    if (this.$refs.addRoleForm) {
+                        this.$refs.addRoleForm.resetFields();
+                    }
+                });
+            },
+            handleAddRoleDialogClose(done) {
+                if (this.$refs.addRoleForm) {
+                    this.$refs.addRoleForm.resetFields();
+                }
+                this.addRoleDialogVisible = false;
+                done && done();
+            },
+            confirmAddRole() {
+                this.$refs.addRoleForm.validate((valid) => {
+                    if (valid) {
+                        axios.post('/manage/role/add', this.addRoleForm, {
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                            .then(response => {
+                                if (response.data.code === 200) {
+                                    this.$message.success('添加角色成功');
+                                    this.addRoleDialogVisible = false;
+                                    this.fetchRoles();
+                                } else {
+                                    this.$message.error(response.data.msg || '添加角色失败');
+                                }
+                            })
+                            .catch(error => {
+                                this.$message.error('添加角色失败：' + (error.response?.data?.msg || error.message));
+                            });
+                    } else {
+                        this.$message.error('请填写完整信息');
+                    }
+                });
+            },
+            showEditRoleDialog(row) {
+                this.editRoleForm.roleId = row.id;
+                this.editRoleForm.name = row.name;
+                this.editRoleForm.description = row.description;
+                this.editRoleForm.permissions = row.permissions ? row.permissions.map(p => p.permissionId) : [];
+                this.editRoleDialogVisible = true;
+            },
+            handleEditRoleDialogClose(done) {
+                if (this.$refs.editRoleForm) {
+                    this.$refs.editRoleForm.resetFields();
+                }
+                this.editRoleForm.permissions = [];
+                this.editRoleDialogVisible = false;
+                done && done();
+            },
+            confirmEditRole() {
+                this.$refs.editRoleForm.validate((valid) => {
+                    if (valid) {
+                        const requestData = {
+                            roleId: this.editRoleForm.roleId,
+                            name: this.editRoleForm.name,
+                            description: this.editRoleForm.description,
+                            permissionIds: this.editRoleForm.permissions
+                        };
+                        axios.post('/manage/role/updateWithPermissions', requestData, {
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                            .then(response => {
+                                if (response.data.code === 200) {
+                                    this.$message.success('修改角色成功');
+                                    this.editRoleDialogVisible = false;
+                                    this.fetchRoles();
+                                } else {
+                                    this.$message.error(response.data.msg || '修改角色失败');
+                                }
+                            })
+                            .catch(error => {
+                                this.$message.error('修改角色失败：' + (error.response?.data?.msg || error.message));
+                            });
+                    } else {
+                        this.$message.error('请填写完整信息');
+                    }
+                });
+            },
+            deleteRole(row) {
+                this.$confirm('确定删除角色 ' + row.name + ' 吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    axios.post('/manage/role/delete', { roleId: row.id }, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.$message.success('删除角色成功');
+                                this.fetchRoles();
+                            } else {
+                                this.$message.error(response.data.msg || '删除角色失败');
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('删除角色失败：' + (error.response?.data?.msg || error.message));
+                        });
+                }).catch(() => {
+                    this.$message.info('已取消删除');
+                });
+            },
+            batchDeleteRoles() {
+                if (!this.selectedRoles || this.selectedRoles.length === 0) {
+                    this.$message.warning("请先选择要删除的角色！");
+                    return;
+                }
+                this.$confirm('确定删除选中的 ' + this.selectedRoles.length + ' 个角色吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    const roleIds = this.selectedRoles.map(row => row.id);
+                    axios.post('/manage/role/batchDelete', roleIds, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.$message.success(response.data.msg);
+                                this.fetchRoles();
+                            } else {
+                                this.$message.error(response.data.msg || '批量删除失败');
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('批量删除失败：' + (error.response?.data?.msg || error.message));
+                        });
+                }).catch(() => {
+                    this.$message.info('已取消删除');
+                });
+            },
+            handleRoleSelectionChange(selection) {
+                this.selectedRoles = selection;
+            }
+        }
+    });
+</script>
+</body>
+</html>

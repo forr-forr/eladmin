@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户注册 - udPay-v3</title>
+    <link rel="stylesheet" href="element-ui/lib/theme-chalk/index.css">
+    <script src="js/vue.js"></script>
+    <script src="element-ui/lib/index.js"></script>
+    <style>
+        body {
+            background-color: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .register-container {
+            width: 350px;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .register-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .login-link {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #409EFF;
+            cursor: pointer;
+        }
+
+        .login-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="register-container">
+        <h2 class="register-title">用户注册</h2>
+        <el-form :model="registerForm" ref="registerForm" label-width="80px">
+            <el-form-item label="用户名">
+                <el-input v-model="registerForm.username" placeholder="请输入用户名" required></el-input>
+            </el-form-item>
+            <el-form-item label="邮箱">
+                <el-input v-model="registerForm.email" placeholder="请输入邮箱" required></el-input>
+            </el-form-item>
+            <el-form-item label="密码">
+                <el-input type="password" v-model="registerForm.password" placeholder="请输入密码" show-password required></el-input>
+            </el-form-item>
+            <el-form-item label="确认密码">
+                <el-input type="password" v-model="registerForm.confirmPassword" placeholder="请确认密码" show-password required></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="handleRegister" :loading="loading">注 册</el-button>
+            </el-form-item>
+        </el-form>
+        <div class="login-link" @click="redirectToLogin">已有账号？点击登录</div>
+    </div>
+</div>
+<!-- 全局引入烟花特效 -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<script>
+    new Vue({
+        el: "#app",
+        data() {
+            return {
+                registerForm: {
+                    username: "",
+                    email: "",
+                    password: "",
+                    confirmPassword: ""
+                },
+                loading: false
+            };
+        },
+        methods: {
+            handleRegister() {
+                if (!this.registerForm.username || !this.registerForm.email || !this.registerForm.password || !this.registerForm.confirmPassword) {
+                    this.$message.error("请填写所有字段");
+                    return;
+                }
+
+                if (this.registerForm.password !== this.registerForm.confirmPassword) {
+                    this.$message.error("密码和确认密码不匹配");
+                    return;
+                }
+
+                this.loading = true;
+                fetch("/user/doRegister", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(this.registerForm)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        this.loading = false;
+                        if (data.code === 200) {
+                            this.$message.success("注册成功！_即将跳转");
+                            // 触发烟花
+                            this.triggerConfetti();
+                            // 3 秒后跳转回主页
+                            setTimeout(() => {
+                                window.location.href = "login.html";  // 跳转到登录页面
+                            }, 2000);
+                        } else {
+                            this.$message.error(data.msg || "注册失败");
+                        }
+                    })
+                    .catch(err => {
+                        this.loading = false;
+                        console.error("注册请求失败", err);
+                        this.$message.error("服务器错误，请稍后再试");
+                    });
+            },
+            redirectToLogin() {
+                window.location.href = "login.html";
+            },
+            //播放烟花
+            triggerConfetti() {
+                const duration = 3 * 1000; // 持续 3 秒
+                const end = Date.now() + duration;
+
+                function frame() {
+                    confetti({
+                        particleCount: 5,   // 每次发射 5 颗粒
+                        spread: 120,        // 散开角度
+                        startVelocity: 30,  // 初速度
+                        origin: { x: Math.random(), y: Math.random() - 0.2 } // 位置
+                    });
+
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                }
+
+                frame(); // 开始特效
+            }
+        }
+    });
+</script>
+</body>
+</html>

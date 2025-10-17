@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>el-admin后台管理</title>
+    <link rel="stylesheet" href="element-ui/lib/theme-chalk/index.css">
+    <script src="js/vue.js"></script>
+    <script src="element-ui/lib/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .el-header {
+            background-color: #545c64;
+        }
+
+        /* 1. 确保 HTML 和 Body 撑满整个视口 */
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* 防止出现多余的滚动条 */
+        }
+
+        /* 2. 确保 #app 容器撑满整个视口 */
+        #app {
+            height: 100%;
+        }
+
+        /* 3. 为最外层的 el-container 设置 Flexbox 布局 */
+        .el-container.main-layout {
+            height: 100%;
+            display: flex;
+            flex-direction: column; /* 垂直排列头部和主体内容 */
+        }
+
+        /* 4. 让包含侧边栏和主内容的容器填满剩余空间 */
+        .el-container.body-content {
+            flex: 1; /* 占据除了 el-header 之外的所有空间 */
+            border: 1px solid #eee;
+        }
+
+        /* 5. el-main 填满父容器的剩余空间 */
+        .el-main {
+            padding: 0; /* 移除默认内边距 */
+            flex: 1; /* 占据除了 el-aside 之外的所有空间 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 6. el-tabs 填满 el-main 的剩余空间 */
+        .el-tabs {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 7. el-tabs 的内容区填满剩余空间 */
+        .el-tabs__content {
+            flex: 1;
+            overflow-y: hidden; /* 隐藏 tabs 内容区的滚动条，让 iframe 自己滚动 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 8. 确保 el-tab-pane 填满其父容器 */
+        .el-tab-pane {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 9. 确保 iframe 最终填满所有可用空间 */
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <el-container v-if="!fullscreenLoading" class="main-layout">
+        <el-header class="el-header">
+            <el-container>
+                <el-menu
+                        mode="horizontal"
+                        background-color="#545c64"
+                        text-color="white"
+                        active-text-color="#ffd04b"
+                        style="margin-left: auto;">
+                    <el-submenu index="2">
+                        <template slot="title">
+                            <span>{{ username }}的工作台</span>
+                        </template>
+                        <el-menu-item @click="openTab('个人资料', '/user/user.html')">
+                            <i class="el-icon-user"></i> 个人信息
+                        </el-menu-item>
+                        <el-menu-item index="2-3" @click="logout">
+                            <i class="el-icon-switch-button"></i> 退出登录
+                        </el-menu-item>
+                    </el-submenu>
+                </el-menu>
+            </el-container>
+        </el-header>
+        <el-container class="body-content">
+            <el-aside width="200px" style="background-color: rgb(238, 241, 246)">
+                <el-menu
+                        :default-openeds="openedMenus"
+                        :default-active="activeTab"
+                        @open="handleOpen"
+                        @close="handleClose"
+                >
+                    <el-menu-item
+                            v-if="['user', 'admin', 'root'].includes(userRole)"
+                            index="/user/userHome.html"
+                            @click="openTab('主页', '/user/userHome.html')"
+                    >
+                        <i class="el-icon-house"></i> 主页
+                    </el-menu-item>
+
+
+                    <el-submenu
+                            v-if="['admin', 'root'].includes(userRole)"
+                            index="admin-operations"
+                    >
+                        <template slot="title">
+                            <i class="el-icon-setting"></i> 管理员操作
+                        </template>
+                        <el-menu-item
+                                index="users.html"
+                                @click="openTab('用户管理', 'admin/users.html')"
+                        >
+                            <i class="el-icon-user-solid"></i> 用户管理
+                        </el-menu-item>
+                        <el-menu-item
+                                index="role.html"
+                                @click="openTab('角色管理', 'admin/role.html')"
+                        >
+                            <i class="el-icon-key"></i> 角色管理
+                        </el-menu-item>
+                        <el-menu-item
+                                index="permission.html"
+                                @click="openTab('权限管理', 'admin/permission.html')"
+                        >
+                            <i class="el-icon-lock"></i> 权限管理
+                        </el-menu-item>
+                        <el-menu-item
+                                index="userlog.html"
+                                @click="openTab('操作日志', 'admin/userlog.html')"
+                        >
+                            <i class="el-icon-notebook-2"></i> 操作日志
+                        </el-menu-item>
+                    </el-submenu>
+
+                    <el-submenu
+                            v-if="['user', 'admin', 'root'].includes(userRole)"
+                            index="module-management"
+                    >
+                        <template slot="title">
+                            <i class="el-icon-menu"></i> 模块管理
+                        </template>
+                        <el-menu-item
+                                index="public-modules.html"
+                                @click="openTab('公共模块', 'module/public-modules.html')"
+                        >
+                            <i class="el-icon-folder-opened"></i> 公共模块
+                        </el-menu-item>
+                        <el-menu-item
+                                index="private-modules.html"
+                                @click="openTab('私有模块', 'module/private-modules.html')"
+                        >
+                            <i class="el-icon-folder-opened"></i> 私有模块
+                        </el-menu-item>
+                    </el-submenu>
+
+                    <el-submenu
+                            v-if="['user', 'admin', 'root'].includes(userRole)"
+                            index="project-management"
+                    >
+                        <template slot="title">
+                            <i class="el-icon-paperclip"></i> 项目操作
+                        </template>
+                        <el-menu-item
+                                v-for="project in projects"
+                                :key="project.id"
+                                :index="'/project/' + project.path + '.html'"
+                                @click="openTab(project.name, 'project/view/' + project.id)"
+                        >
+                            <i class="el-icon-folder"></i> {{ project.name }}
+                        </el-menu-item>
+                    </el-submenu>
+
+                    <el-menu-item
+                            v-if="['admin', 'root', 'user'].includes(userRole)"
+                            index="/TRC20/batch.html"
+                            @click="openTab('归集', '/TRC20/batch.html')"
+                    >
+                        <i class="el-icon-wallet"></i> 归集
+                    </el-menu-item>
+
+                    <el-menu-item
+                            v-if="['user', 'admin', 'root'].includes(userRole)"
+                            index="/user/user.html"
+                            @click="openTab('个人资料', '/user/user.html')"
+                    >
+                        <i class="el-icon-user"></i> 个人资料
+                    </el-menu-item>
+                </el-menu>
+            </el-aside>
+            <el-container class="main-content">
+                <el-main>
+                    <el-tabs v-model="activeTab" type="card" closable @tab-remove="removeTab">
+                        <el-tab-pane
+                                v-for="tab in tabs"
+                                :key="tab.name"
+                                :label="tab.title"
+                                :name="tab.name">
+                            <iframe :src="tab.url" frameborder="0"></iframe>
+                        </el-tab-pane>
+                    </el-tabs>
+                </el-main>
+            </el-container>
+        </el-container>
+    </el-container>
+
+    <el-dialog
+            :visible.sync="addProjectDialogVisible"
+            title="创建项目"
+            width="400px"
+            :before-close="handleAddProjectDialogClose">
+        <el-form :model="addProjectForm" :rules="addProjectRules" ref="addProjectForm" label-width="80px">
+            <el-form-item label="项目名称" prop="name">
+                <el-input v-model="addProjectForm.name" placeholder="请输入项目名称"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="handleAddProjectDialogClose">取消</el-button>
+            <el-button type="primary" @click="confirmAddProject">确定</el-button>
+        </div>
+    </el-dialog>
+</div>
+
+<script>
+    new Vue({
+        el: "#app",
+        data() {
+            return {
+                fullscreenLoading: true,
+                username: '',
+                userRole: '',
+                activeTab: "/user/userHome.html",
+                tabs: [
+                    { title: "主页", name: "/user/userHome.html", url: "/user/userHome.html" }
+                ],
+                showGoogleSetupDot: false,
+                openedMenus: ['admin-operations', 'module-management', 'project-management'],
+                userPermissions: [],
+                userRoles: [],
+                addProjectDialogVisible: false,
+                addProjectForm: {
+                    name: ''
+                },
+                addProjectRules: {
+                    name: [
+                        { required: true, message: '请输入项目名称', trigger: 'blur' },
+                        { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
+                    ]
+                },
+                // 新增：用于存储项目列表的数组
+                projects: []
+            };
+        },
+        methods: {
+            hasRole(role) {
+                if (!this.userRoles) return false;
+                if (Array.isArray(role)) {
+                    return this.userRoles.some(r => role.includes(r));
+                }
+                return this.userRoles.includes(role);
+            },
+            showAddProjectDialog() {
+                this.addProjectDialogVisible = true;
+                this.$nextTick(() => {
+                    if (this.$refs.addProjectForm) {
+                        this.$refs.addProjectForm.resetFields();
+                    }
+                });
+            },
+            handleAddProjectDialogClose() {
+                this.addProjectDialogVisible = false;
+                if (this.$refs.addProjectForm) {
+                    this.$refs.addProjectForm.resetFields();
+                }
+            },
+            confirmAddProject() {
+                this.$refs.addProjectForm.validate((valid) => {
+                    if (valid) {
+                        axios.post('/project/create', this.addProjectForm)
+                            .then(response => {
+                                if (response.data.code === 200) {
+                                    this.$message.success('项目创建成功！');
+                                    this.addProjectDialogVisible = false;
+                                    // 重新获取项目列表并刷新当前 tab
+                                    this.fetchProjects();
+                                } else {
+                                    this.$message.error(response.data.msg || '项目创建失败');
+                                }
+                            })
+                            .catch(error => {
+                                this.$message.error('请求失败：' + (error.response?.data?.msg || error.message));
+                            });
+                    } else {
+                        return false;
+                    }
+                });
+            },
+            // 获取项目列表的方法
+            fetchProjects() {
+                axios.get('/project/list')
+                    .then(response => {
+                        if (response.data && response.data.code === 200) {
+                            this.projects = response.data.data || [];
+                            // 如果当前激活的 tab 是项目列表，则刷新它
+                            if (this.activeTab === '/project/list.html') {
+                                this.refreshTab('/project/list.html');
+                            }
+                        } else {
+                            this.$message.error(response.data.msg || '获取项目列表失败！');
+                        }
+                    })
+                    .catch(error => {
+                        this.$message.error('获取项目列表失败！' + (error.response?.data?.msg || error.message));
+                    });
+            },
+            refreshTab(url) {
+                const iframe = document.querySelector(`iframe[src="${url}"]`);
+                if (iframe) {
+                    iframe.contentWindow.location.reload();
+                }
+            },
+            openTab(title, url) {
+                console.log("Clicked Tab:", title, url);
+                this.activeTab = url;
+                let exist = this.tabs.find(tab => tab.name === url);
+                if (!exist) {
+                    this.tabs.push({ title, name: url, url });
+                }
+                if (url.startsWith('admin/') && !this.openedMenus.includes('admin-operations')) {
+                    this.openedMenus.push('admin-operations');
+                }
+                if (url.startsWith('module/') && !this.openedMenus.includes('module-management')) {
+                    this.openedMenus.push('module-management');
+                }
+            },
+            removeTab(targetName) {
+                let index = this.tabs.findIndex(tab => tab.name === targetName);
+                this.tabs.splice(index, 1);
+                if (this.activeTab === targetName) {
+                    this.activeTab = this.tabs.length ? this.tabs[this.tabs.length - 1].name : "";
+                }
+            },
+            handleOpen(key, keyPath) {
+                if (!this.openedMenus.includes(key)) {
+                    this.openedMenus.push(key);
+                }
+            },
+            handleClose(key, keyPath) {
+                this.openedMenus = this.openedMenus.filter(item => item !== key);
+            },
+            checkLogin() {
+                axios.get('/user/getinfo')
+                    .then(response => {
+                        if (!response.data.data || !response.data.data.user) {
+                            this.$message.error(response.data.msg);
+                            window.location.href = "/login.html";
+                        } else {
+                            this.username = response.data.data.user.username;
+                            this.userRoles = response.data.data.roles;
+                            this.userPermissions = response.data.data.permissions;
+                            localStorage.setItem("userRoles", JSON.stringify(this.userRoles));
+                            localStorage.setItem("userPermissions", JSON.stringify(this.userPermissions));
+                            localStorage.setItem("user", JSON.stringify(response.data.data.user));
+                            this.showGoogleSetupDot = response.data.data.user.googleSecretKey === null;
+                            this.userRole = this.userRoles.includes('root') ? 'root' : (this.userRoles.includes('admin') ? 'admin' : 'user');
+                            this.$message.success("刷新成功！");
+
+                            // 在登录成功后获取项目列表
+                            this.fetchProjects();
+                        }
+                    })
+                    .catch(error => {
+                        if (error.response && error.response.data) {
+                            this.$message.error(error.response.data.msg);
+                        } else {
+                            this.$message.error("请求失败，请稍后再试！");
+                        }
+                        setTimeout(() => {
+                            window.location.href = "/login.html";
+                        }, 2000);
+                    })
+                    .finally(() => {
+                        this.fullscreenLoading = false;
+                    });
+            },
+            logout() {
+                axios.get('/user/logout')
+                    .then(response => {
+                        this.$message.success("退出成功");
+                        setTimeout(() => {
+                            window.location.href = "/login.html";
+                        }, 1000);
+                    })
+                    .catch(error => {
+                        window.location.href = "/login.html";
+                    });
+            }
+        },
+        mounted() {
+            this.checkLogin();
+        }
+    });
+</script>
+</body>
+</html>

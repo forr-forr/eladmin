@@ -1,0 +1,23 @@
+<configuration>
+
+    <!-- 控制台日志输出 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 根日志级别 -->
+    <root level="info">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+    <!-- 指定某些包的日志级别 -->
+    <logger name="org.springframework" level="info" />
+    <logger name="com.itheima" level="info" />
+
+    <!-- 禁用 MyBatis 和 MyBatis Plus SQL 日志 -->
+    <logger name="com.baomidou.mybatisplus" level="OFF" />
+    <logger name="org.mybatis.spring" level="OFF" />
+
+</configuration>

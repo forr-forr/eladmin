@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户登录 -xss</title>
+    <link rel="stylesheet" href="element-ui/lib/theme-chalk/index.css">
+    <script src="js/vue.js"></script>
+    <script src="element-ui/lib/index.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .container { /* 假设你的内容包裹在一个容器中 */
+            width: 100%;
+            max-width: 1200px; /* 限制最大宽度，桌面端美观 */
+            margin: 0 auto;
+            padding: 10px;
+        }
+        /* 手机端调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 5px;
+            }
+        }
+        body {
+            background-color: #f2f2f2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            width: 350px;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .login-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .register-link {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #409EFF;
+            cursor: pointer;
+        }
+
+        .register-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="login-container">
+        <h2 class="login-title">用户登录</h2>
+        <el-form :model="loginForm" ref="loginForm" label-width="80px">
+            <el-form-item label="用户名">
+                <el-input v-model="loginForm.username" placeholder="请输入用户名"></el-input>
+            </el-form-item>
+            <el-form-item label="密码">
+                <el-input type="password" v-model="loginForm.password" placeholder="请输入密码" show-password></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="handleLogin" :loading="loading">登 录</el-button>
+            </el-form-item>
+        </el-form>
+        <div class="register-link" @click="redirectToRegister">没有账号？点击注册</div>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: "#app",
+        data() {
+            return {
+                loginForm: {
+                    username: "admin",
+                    password: "adminadmin"
+                },
+                loading: false
+            };
+        },
+        methods: {
+            handleLogin() {
+                if (!this.loginForm.username || !this.loginForm.password) {
+                    this.$message.error("请输入用户名和密码");
+                    return;
+                }
+
+                this.loading = true;
+                fetch("/user/doLogin", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(this.loginForm)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        this.loading = false;
+                        if (data.code === 200) {
+                            localStorage.setItem("token", data.token);  // 存储 token
+                            this.$message.success("登录成功！");
+                            setTimeout(() => {
+                                window.location.href = "index.html";  // 跳转到首页
+                            }, 1000);
+                        } else {
+                            this.$message.error(data.msg || "登录失败");
+                        }
+                    })
+                    .catch(err => {
+                        this.loading = false;
+                        console.error("登录请求失败", err);
+                        this.$message.error("服务器错误，请稍后再试");
+                    });
+            },
+
+            redirectToRegister() {
+                // 跳转到注册页面
+                window.location.href = "register.html";
+            }
+        }
+    });
+</script>
+</body>
+</html>

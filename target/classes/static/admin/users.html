@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>用户管理</title>
+    <link rel="stylesheet" href="../element-ui/lib/theme-chalk/index.css">
+    <script src="../js/vue.js"></script>
+    <script src="../element-ui/lib/index.js"></script>
+    <script src="../js/axios-0.18.0.js"></script>
+</head>
+<body>
+<style>
+    .user-table .el-table__header th {
+        background-color: #409EFF;
+        color: #FFFFFF;
+        font-weight: bold;
+    }
+
+    .fixed-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #F5F7FA;
+    }
+
+    .table-container {
+        max-height: 730px;
+        overflow-y: auto;
+    }
+</style>
+<div id="app" v-if="hasPermission(['root', 'admin'])">
+    <el-form inline>
+        <el-form-item label="用户名">
+            <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="邮箱">
+            <el-input v-model="searchForm.email" placeholder="请输入邮箱" clearable></el-input>
+        </el-form-item>
+        <el-form-item label="角色">
+            <el-select v-model="searchForm.roleId" placeholder="请选择角色" clearable>
+                <el-option
+                        v-for="role in roleOptions"
+                        :key="role.id"
+                        :label="role.description"
+                        :value="role.id">
+                </el-option>
+                <el-option label="无角色" :value="0"></el-option>
+            </el-select>
+        </el-form-item>
+        <el-form-item>
+            <el-button type="primary" icon="el-icon-search" @click="searchUsers">搜索</el-button>
+            <el-button type="default" icon="el-icon-refresh" @click="resetSearch">重置</el-button>
+        </el-form-item>
+        <el-form-item>
+            <el-button type="primary" icon="el-icon-plus" @click="showAddDialog" :disabled="!hasPermission('user:insert')">添加用户</el-button>
+            <el-button type="warning" icon="el-icon-lock" @click="batchFreeze" :disabled="!hasPermission('user:update')">批量冻结</el-button>
+            <el-button type="success" icon="el-icon-unlock" @click="batchUnfreeze" :disabled="!hasPermission('user:update')">批量解冻</el-button>
+            <el-button type="danger" icon="el-icon-delete" @click="batchDelete" :disabled="!hasPermission('user:delete')">批量删除</el-button>
+        </el-form-item>
+    </el-form>
+
+    <div class="table-container">
+        <el-table
+                :data="tableData"
+                v-loading="loading"
+                border
+                @selection-change="handleSelectionChange"
+                :header-cell-class-name="'fixed-header'">
+            <el-table-column type="selection" width="50"></el-table-column>
+            <el-table-column prop="id" label="用户ID" width="100" align="center"></el-table-column>
+            <el-table-column prop="username" label="用户名" width="150" align="center"></el-table-column>
+            <el-table-column prop="email" label="邮箱" width="200" align="center"></el-table-column>
+            <el-table-column prop="createdAt" label="创建时间" width="180" align="center">
+                <template slot-scope="scope">
+                    {{ formatDate(scope.row.createdAt) }}
+                </template>
+            </el-table-column>
+            <el-table-column prop="lastLoginAt" label="最后登录时间" width="180" align="center">
+                <template slot-scope="scope">
+                    {{ formatDate(scope.row.lastLoginAt) }}
+                </template>
+            </el-table-column>
+            <el-table-column prop="isDisabled" label="封禁状态" width="120" align="center">
+                <template slot-scope="scope">
+                    <el-tag :type="scope.row.isDisabled ? 'danger' : 'success'">
+                        {{ scope.row.isDisabled ? '已封禁' : '未封禁' }}
+                    </el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column label="所属角色" width="200" align="center">
+                <template slot-scope="scope">
+                    <el-tag
+                            v-for="role in scope.row.roles"
+                            :key="role.roleId"
+                            type="info"
+                            style="margin-right: 5px; margin-bottom: 5px;">
+                        {{ role.roleName }}
+                    </el-tag>
+                    <el-tag v-if="!scope.row.roles || scope.row.roles.length === 0" type="danger">无角色</el-tag>
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" width="300" align="center">
+                <template slot-scope="scope">
+                    <el-button type="primary" size="small" @click="showEditDialog(scope.row)" :disabled="!hasPermission('user:update')">编辑</el-button>
+                    <el-button type="danger" size="small" @click="deleteUser(scope.row)" :disabled="!hasPermission('user:delete')">删除</el-button>
+                    <el-button type="warning" size="small" @click="freezeUser(scope.row)" v-if="!scope.row.isDisabled" :disabled="!hasPermission('user:update')">冻结</el-button>
+                    <el-button type="success" size="small" @click="unfreezeUser(scope.row)" v-else :disabled="!hasPermission('user:update')">解冻</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </div>
+
+    <el-pagination
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="currentPage"
+            :page-sizes="[10, 20, 50]"
+            :page-size="pageSize"
+            layout="total, sizes, prev, pager, next"
+            :total="totalRecords">
+    </el-pagination>
+
+    <!-- 添加用户弹窗 -->
+    <el-dialog
+            :visible.sync="addDialogVisible"
+            title="添加用户"
+            width="500px"
+            :before-close="handleAddDialogClose">
+        <el-form :model="addForm" :rules="addRules" ref="addForm" label-width="100px">
+            <el-form-item label="用户名" prop="username">
+                <el-input v-model="addForm.username" placeholder="请输入用户名"></el-input>
+            </el-form-item>
+            <el-form-item label="邮箱" prop="email">
+                <el-input v-model="addForm.email" placeholder="请输入邮箱"></el-input>
+            </el-form-item>
+            <el-form-item label="密码" prop="password">
+                <el-input v-model="addForm.password" type="password" placeholder="请输入密码"></el-input>
+            </el-form-item>
+            <el-form-item label="角色" prop="roleId">
+                <el-select v-model="addForm.roleId" placeholder="请选择角色" clearable @change="onRoleChange">
+                    <el-option label="无角色" :value="0"></el-option>
+                    <el-option
+                            v-for="role in roleOptions"
+                            :key="role.id"
+                            :label="role.description"
+                            :value="role.id"
+                            :disabled="isRoleDisabled(role.id)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="handleAddDialogClose">取消</el-button>
+            <el-button type="primary" @click="confirmAddUser">确定</el-button>
+        </div>
+    </el-dialog>
+
+    <!-- 编辑用户弹窗 -->
+    <el-dialog
+            :visible.sync="editDialogVisible"
+            title="编辑用户"
+            width="500px"
+            :before-close="handleEditDialogClose">
+        <el-form :model="editForm" :rules="editRules" ref="editForm" label-width="100px">
+            <el-form-item label="用户ID" prop="userId">
+                <el-input v-model="editForm.userId" readonly></el-input>
+            </el-form-item>
+            <el-form-item label="用户名" prop="username">
+                <el-input v-model="editForm.username" placeholder="请输入用户名"></el-input>
+            </el-form-item>
+            <el-form-item label="邮箱" prop="email">
+                <el-input v-model="editForm.email" placeholder="请输入邮箱"></el-input>
+            </el-form-item>
+            <el-form-item label="角色" prop="roleId">
+                <el-select v-model="editForm.roleId" placeholder="请选择角色" clearable @change="onRoleChange">
+                    <el-option label="无角色" :value="0"></el-option>
+                    <el-option
+                            v-for="role in roleOptions"
+                            :key="role.id"
+                            :label="role.description"
+                            :value="role.id"
+                            :disabled="isRoleDisabled(role.id)">
+                    </el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="handleEditDialogClose">取消</el-button>
+            <el-button type="primary" @click="confirmEditUser">确定</el-button>
+        </div>
+    </el-dialog>
+
+    <!-- 冻结用户弹窗 -->
+    <el-dialog
+            :visible.sync="freezeDialogVisible"
+            title="冻结用户"
+            width="500px"
+            :before-close="handleFreezeDialogClose">
+        <el-form :model="freezeForm" :rules="freezeRules" ref="freezeForm" label-width="100px">
+            <el-form-item label="用户ID" prop="userId">
+                <el-input v-model="freezeForm.userId" readonly></el-input>
+            </el-form-item>
+            <el-form-item label="冻结天数" prop="freezeDays">
+                <el-input-number v-model="freezeForm.freezeDays" :min="0" :step="1" placeholder="请输入冻结天数（0表示永久冻结）"></el-input-number>
+            </el-form-item>
+            <el-form-item label="冻结原因" prop="reason">
+                <el-input v-model="freezeForm.reason" placeholder="请输入冻结原因"></el-input>
+            </el-form-item>
+        </el-form>
+        <div slot="footer">
+            <el-button @click="handleFreezeDialogClose">取消</el-button>
+            <el-button type="primary" @click="confirmFreezeUser">确定</el-button>
+        </div>
+    </el-dialog>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            tableData: [],
+            loading: false,
+            currentPage: 1,
+            pageSize: 10,
+            totalRecords: 0,
+            userRoles: [],
+            userPermissions: [],
+            selectedRows: [],
+            searchForm: {
+                username: '',
+                email: '',
+                roleId: ''
+            },
+            roleOptions: [],
+            addDialogVisible: false,
+            addForm: {
+                username: '',
+                email: '',
+                password: '',
+                roleId: null
+            },
+            addRules: {
+                username: [
+                    { required: true, message: '请输入用户名', trigger: 'blur' },
+                    { min: 3, max: 20, message: '用户名长度应在 3 到 20 个字符之间', trigger: 'blur' }
+                ],
+                email: [
+                    { required: true, message: '请输入邮箱', trigger: 'blur' },
+                    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' },
+                    { max: 50, message: '邮箱长度不能超过 50 个字符', trigger: 'blur' }
+                ],
+                password: [
+                    { required: true, message: '请输入密码', trigger: 'blur' },
+                    { min: 6, max: 20, message: '密码长度应在 6 到 20 个字符之间', trigger: 'blur' }
+                ],
+                roleId: [
+                    { validator: (rule, value, callback) => {
+                            if (value === null || value === undefined) {
+                                callback(new Error('请选择角色或选择无角色'));
+                            } else {
+                                callback();
+                            }
+                        }, trigger: 'change' }
+                ]
+            },
+            editDialogVisible: false,
+            editForm: {
+                userId: null,
+                username: '',
+                email: '',
+                roleId: null
+            },
+            editRules: {
+                username: [
+                    { required: true, message: '请输入用户名', trigger: 'blur' },
+                    { min: 3, max: 20, message: '用户名长度应在 3 到 20 个字符之间', trigger: 'blur' }
+                ],
+                email: [
+                    { required: true, message: '请输入邮箱', trigger: 'blur' },
+                    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' },
+                    { max: 50, message: '邮箱长度不能超过 50 个字符', trigger: 'blur' }
+                ],
+                roleId: [
+                    { validator: (rule, value, callback) => {
+                            if (value === null || value === undefined) {
+                                callback(new Error('请选择角色或选择无角色'));
+                            } else {
+                                callback();
+                            }
+                        }, trigger: 'change' }
+                ]
+            },
+            freezeDialogVisible: false,
+            freezeForm: {
+                userId: null,
+                freezeDays: 0,
+                reason: ''
+            },
+            freezeRules: {
+                freezeDays: [
+                    { required: true, type: 'number', message: '请输入冻结天数', trigger: 'blur' },
+                    { type: 'number', min: 0, message: '冻结天数必须大于等于 0', trigger: 'blur' }
+                ],
+                reason: [
+                    { required: true, message: '请输入冻结原因', trigger: 'blur' }
+                ]
+            }
+        },
+        beforeMount() {
+            const storedRoles = JSON.parse(localStorage.getItem("userRoles") || "[]");
+            const storedPermissions = JSON.parse(localStorage.getItem("userPermissions") || "[]");
+            console.log("Stored Roles:", storedRoles);
+            console.log("Stored Permissions:", storedPermissions);
+
+            if (!storedRoles.some(role => ['root', 'admin'].includes(role))) {
+                console.log("No root or admin permission, redirecting...");
+                alert('你没有权限访问这个页面');
+                parent.location.reload();
+                return;
+            }
+
+            this.userRoles = storedRoles;
+            this.userPermissions = storedPermissions;
+            this.fetchData();
+            this.fetchRoles();
+        },
+        methods: {
+            hasPermission(rolesOrPermissions) {
+                if (Array.isArray(rolesOrPermissions)) {
+                    return this.userRoles.some(role => rolesOrPermissions.includes(role)) ||
+                        this.userPermissions.some(perm => rolesOrPermissions.includes(perm));
+                }
+                return this.userRoles.includes(rolesOrPermissions) || this.userPermissions.includes(rolesOrPermissions);
+            },
+            formatDate(date) {
+                if (!date) return "暂无数据";
+                return new Date(date).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+            },
+            fetchRoles() {
+                axios.get('/manage/role/list')
+                    .then(response => {
+                        if (response.data && response.data.code === 200) {
+                            this.roleOptions = response.data.data || [];
+                        } else {
+                            this.$message.error('获取角色列表失败！' + (response.data.msg || '未知错误'));
+                        }
+                    })
+                    .catch(error => {
+                        this.$message.error('获取角色列表失败：' + (error.response?.data?.msg || error.message));
+                    });
+            },
+            isRoleDisabled(roleId) {
+                if (this.userRoles.includes('root')) {
+                    return roleId === 1; // root 不能选择 root 角色
+                }
+                if (this.userRoles.includes('admin')) {
+                    return roleId === 1 || roleId === 2; // admin 不能选择 root 或 admin
+                }
+                return false;
+            },
+            onRoleChange(roleId) {
+                if (this.isRoleDisabled(roleId)) {
+                    this.$message.warning('您无权选择此角色');
+                    this.addForm.roleId = null;
+                    this.editForm.roleId = null;
+                }
+            },
+            fetchData() {
+                this.loading = true;
+                axios.get('/manage/user/list', {
+                    params: {
+                        page: this.currentPage,
+                        pageSize: this.pageSize,
+                        username: this.searchForm.username,
+                        email: this.searchForm.email,
+                        roleId: this.searchForm.roleId
+                    }
+                })
+                    .then(response => {
+                        if (response.data && response.data.code === 200) {
+                            this.tableData = response.data.data.data || [];
+                            this.totalRecords = response.data.data.total || 0;
+                            this.$message({ message: '数据获取成功[' + this.totalRecords + "]", type: 'success' });
+                        } else {
+                            this.$message.error(response.data.msg || '数据格式错误！');
+                        }
+                    })
+                    .catch(error => {
+                        if (error.response && error.response.data) {
+                            const msg = error.response.data.msg || '未知错误';
+                            this.$message.error(`查询失败：${msg}`);
+                            if (error.response.status === 403) {
+                                setTimeout(() => {
+                                    parent.location.reload();
+                                }, 2000);
+                            }
+                        } else {
+                            this.$message.error('查询失败：网络错误或服务器无响应');
+                        }
+                    })
+                    .finally(() => {
+                        this.loading = false;
+                    });
+            },
+            searchUsers() {
+                this.currentPage = 1;
+                this.fetchData();
+            },
+            resetSearch() {
+                this.searchForm.username = '';
+                this.searchForm.email = '';
+                this.searchForm.roleId = '';
+                this.currentPage = 1;
+                this.fetchData();
+            },
+            handleSizeChange(size) {
+                this.pageSize = size;
+                this.currentPage = 1;
+                this.fetchData();
+            },
+            handleCurrentChange(page) {
+                this.currentPage = page;
+                this.fetchData();
+            },
+            handleSelectionChange(selection) {
+                this.selectedRows = selection;
+            },
+            showAddDialog() {
+                this.addDialogVisible = true;
+                this.$nextTick(() => {
+                    if (this.$refs.addForm) {
+                        this.$refs.addForm.resetFields();
+                    }
+                });
+            },
+            handleAddDialogClose(done) {
+                if (this.$refs.addForm) {
+                    this.$refs.addForm.resetFields();
+                }
+                this.addDialogVisible = false;
+                if (done) done();
+            },
+            confirmAddUser() {
+                this.$refs.addForm.validate((valid) => {
+                    if (valid) {
+                        axios.post('/manage/user/add', this.addForm, {
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                            .then(response => {
+                                if (response.data.code === 200) {
+                                    this.$message.success('添加用户成功');
+                                    this.addDialogVisible = false;
+                                    this.fetchData();
+                                } else {
+                                    this.$message.error(response.data.msg || '添加用户失败');
+                                }
+                            })
+                            .catch(error => {
+                                this.$message.error('添加用户失败：' + (error.response?.data?.msg || error.message));
+                            });
+                    } else {
+                        this.$message.error('请填写完整信息');
+                    }
+                });
+            },
+            showEditDialog(row) {
+                this.editForm.userId = row.id;
+                this.editForm.username = row.username;
+                this.editForm.email = row.email;
+                this.editForm.roleId = row.roles && row.roles.length > 0 ? row.roles[0].roleId : 0;
+                this.editDialogVisible = true;
+            },
+            handleEditDialogClose(done) {
+                if (this.$refs.editForm) {
+                    this.$refs.editForm.resetFields();
+                }
+                this.editDialogVisible = false;
+                if (done) done();
+            },
+            confirmEditUser() {
+                this.$refs.editForm.validate((valid) => {
+                    if (valid) {
+                        axios.post('/manage/user/update', this.editForm, {
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                            .then(response => {
+                                if (response.data.code === 200) {
+                                    this.$message.success('修改用户成功');
+                                    this.editDialogVisible = false;
+                                    this.fetchData();
+                                } else {
+                                    this.$message.error(response.data.msg || '修改用户失败');
+                                }
+                            })
+                            .catch(error => {
+                                this.$message.error('修改用户失败：' + (error.response?.data?.msg || error.message));
+                            });
+                    } else {
+                        this.$message.error('请填写完整信息');
+                    }
+                });
+            },
+            deleteUser(row) {
+                this.$confirm('确定删除用户 ' + row.username + ' 吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    axios.post('/manage/user/delete', { userId: row.id }, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.$message.success('删除用户成功');
+                                this.fetchData();
+                            } else {
+                                this.$message.error(response.data.msg || '删除用户失败');
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('删除用户失败：' + (error.response?.data?.msg || error.message));
+                        });
+                }).catch(() => {
+                    this.$message.info('已取消删除');
+                });
+            },
+            batchDelete() {
+                if (!this.selectedRows || this.selectedRows.length === 0) {
+                    this.$message.warning("请先选择要删除的用户！");
+                    return;
+                }
+                this.$confirm('确定删除选中的 ' + this.selectedRows.length + ' 个用户吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    const userIds = this.selectedRows.map(row => row.id);
+                    axios.post('/manage/user/batchDelete', userIds, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.$message.success(response.data.msg);
+                                this.fetchData();
+                            } else {
+                                this.$message.error(response.data.msg || '批量删除失败');
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('批量删除失败：' + (error.response?.data?.msg || error.message));
+                        });
+                }).catch(() => {
+                    this.$message.info('已取消删除');
+                });
+            },
+            freezeUser(row) {
+                this.freezeForm.userId = row.id;
+                this.freezeForm.freezeDays = 0;
+                this.freezeForm.reason = '';
+                this.freezeDialogVisible = true;
+            },
+            handleFreezeDialogClose(done) {
+                if (this.$refs.freezeForm) {
+                    this.$refs.freezeForm.resetFields();
+                }
+                this.freezeDialogVisible = false;
+                if (done) done();
+            },
+            confirmFreezeUser() {
+                this.$refs.freezeForm.validate((valid) => {
+                    if (valid) {
+                        axios.post('/manage/user/freeze', this.freezeForm, {
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                            .then(response => {
+                                if (response.data.code === 200) {
+                                    this.$message.success('冻结用户成功');
+                                    this.freezeDialogVisible = false;
+                                    this.fetchData();
+                                } else {
+                                    this.$message.error(response.data.msg || '冻结用户失败');
+                                }
+                            })
+                            .catch(error => {
+                                this.$message.error('冻结用户失败：' + (error.response?.data?.msg || error.message));
+                            });
+                    } else {
+                        this.$message.error('请填写完整信息');
+                    }
+                });
+            },
+            batchFreeze() {
+                if (!this.selectedRows || this.selectedRows.length === 0) {
+                    this.$message.warning("请先选择要冻结的用户！");
+                    return;
+                }
+                this.$prompt('请输入冻结天数（0表示永久冻结）', '批量冻结', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    inputType: 'number',
+                    inputValue: 0,
+                    inputValidator: (value) => {
+                        if (value === null || value === '') {
+                            return '请输入冻结天数';
+                        }
+                        const num = parseInt(value);
+                        if (isNaN(num) || num < 0) {
+                            return '冻结天数必须大于等于 0';
+                        }
+                        return true;
+                    }
+                }).then(({ value }) => {
+                    const freezeDays = parseInt(value);
+                    const reason = prompt('请输入冻结原因：');
+                    if (!reason) {
+                        this.$message.warning('请输入冻结原因');
+                        return;
+                    }
+                    const userIds = this.selectedRows.map(row => row.id);
+                    axios.post('/manage/user/batchFreeze', {
+                        userIds: userIds,
+                        freezeDays: freezeDays,
+                        reason: reason
+                    }, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.$message.success(response.data.msg);
+                                this.fetchData();
+                            } else {
+                                this.$message.error(response.data.msg || '批量冻结失败');
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('批量冻结失败：' + (error.response?.data?.msg || error.message));
+                        });
+                }).catch(() => {
+                    this.$message.info('已取消冻结');
+                });
+            },
+            unfreezeUser(row) {
+                this.$confirm('确定解冻用户 ' + row.username + ' 吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    axios.post('/manage/user/unfreeze', { userId: row.id }, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.$message.success('解冻用户成功');
+                                this.fetchData();
+                            } else {
+                                this.$message.error(response.data.msg || '解冻用户失败');
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('解冻用户失败：' + (error.response?.data?.msg || error.message));
+                        });
+                }).catch(() => {
+                    this.$message.info('已取消解冻');
+                });
+            },
+            batchUnfreeze() {
+                if (!this.selectedRows || this.selectedRows.length === 0) {
+                    this.$message.warning("请先选择要解冻的用户！");
+                    return;
+                }
+                this.$confirm('确定解冻选中的 ' + this.selectedRows.length + ' 个用户吗？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    const userIds = this.selectedRows.map(row => row.id);
+                    axios.post('/manage/user/batchUnfreeze', userIds, {
+                        headers: { 'Content-Type': 'application/json' }
+                    })
+                        .then(response => {
+                            if (response.data.code === 200) {
+                                this.$message.success(response.data.msg);
+                                this.fetchData();
+                            } else {
+                                this.$message.error(response.data.msg || '批量解冻失败');
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error('批量解冻失败：' + (error.response?.data?.msg || error.message));
+                        });
+                }).catch(() => {
+                    this.$message.info('已取消解冻');
+                });
+            }
+        }
+    });
+</script>
+</body>
+</html>
