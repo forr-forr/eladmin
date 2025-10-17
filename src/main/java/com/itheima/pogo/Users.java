@@ -53,6 +53,7 @@ public class Users {
     private Integer isDisabled;
 
     @Transient
+    @TableField(exist = false)
     @Size(min = 6, max = 20, message = "确认密码长度应在6到20个字符之间")
     private String confirmPassword;
 
