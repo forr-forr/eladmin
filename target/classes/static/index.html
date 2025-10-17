@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>el-admin后台管理</title>
+    <title>后台管理系统</title>
     <link rel="stylesheet" href="element-ui/lib/theme-chalk/index.css">
     <script src="js/vue.js"></script>
     <script src="element-ui/lib/index.js"></script>
@@ -110,15 +110,15 @@
                         @open="handleOpen"
                         @close="handleClose"
                 >
+                    <!-- 主页 -->
                     <el-menu-item
-                            v-if="['user', 'admin', 'root'].includes(userRole)"
                             index="/user/userHome.html"
                             @click="openTab('主页', '/user/userHome.html')"
                     >
                         <i class="el-icon-house"></i> 主页
                     </el-menu-item>
 
-
+                    <!-- 管理员操作 - 只有admin和root角色可见 -->
                     <el-submenu
                             v-if="['admin', 'root'].includes(userRole)"
                             index="admin-operations"
@@ -152,54 +152,8 @@
                         </el-menu-item>
                     </el-submenu>
 
-                    <el-submenu
-                            v-if="['user', 'admin', 'root'].includes(userRole)"
-                            index="module-management"
-                    >
-                        <template slot="title">
-                            <i class="el-icon-menu"></i> 模块管理
-                        </template>
-                        <el-menu-item
-                                index="public-modules.html"
-                                @click="openTab('公共模块', 'module/public-modules.html')"
-                        >
-                            <i class="el-icon-folder-opened"></i> 公共模块
-                        </el-menu-item>
-                        <el-menu-item
-                                index="private-modules.html"
-                                @click="openTab('私有模块', 'module/private-modules.html')"
-                        >
-                            <i class="el-icon-folder-opened"></i> 私有模块
-                        </el-menu-item>
-                    </el-submenu>
-
-                    <el-submenu
-                            v-if="['user', 'admin', 'root'].includes(userRole)"
-                            index="project-management"
-                    >
-                        <template slot="title">
-                            <i class="el-icon-paperclip"></i> 项目操作
-                        </template>
-                        <el-menu-item
-                                v-for="project in projects"
-                                :key="project.id"
-                                :index="'/project/' + project.path + '.html'"
-                                @click="openTab(project.name, 'project/view/' + project.id)"
-                        >
-                            <i class="el-icon-folder"></i> {{ project.name }}
-                        </el-menu-item>
-                    </el-submenu>
-
+                    <!-- 个人资料 -->
                     <el-menu-item
-                            v-if="['admin', 'root', 'user'].includes(userRole)"
-                            index="/TRC20/batch.html"
-                            @click="openTab('归集', '/TRC20/batch.html')"
-                    >
-                        <i class="el-icon-wallet"></i> 归集
-                    </el-menu-item>
-
-                    <el-menu-item
-                            v-if="['user', 'admin', 'root'].includes(userRole)"
                             index="/user/user.html"
                             @click="openTab('个人资料', '/user/user.html')"
                     >
@@ -222,22 +176,6 @@
             </el-container>
         </el-container>
     </el-container>
-
-    <el-dialog
-            :visible.sync="addProjectDialogVisible"
-            title="创建项目"
-            width="400px"
-            :before-close="handleAddProjectDialogClose">
-        <el-form :model="addProjectForm" :rules="addProjectRules" ref="addProjectForm" label-width="80px">
-            <el-form-item label="项目名称" prop="name">
-                <el-input v-model="addProjectForm.name" placeholder="请输入项目名称"></el-input>
-            </el-form-item>
-        </el-form>
-        <div slot="footer">
-            <el-button @click="handleAddProjectDialogClose">取消</el-button>
-            <el-button type="primary" @click="confirmAddProject">确定</el-button>
-        </div>
-    </el-dialog>
 </div>
 
 <script>
@@ -252,22 +190,9 @@
                 tabs: [
                     { title: "主页", name: "/user/userHome.html", url: "/user/userHome.html" }
                 ],
-                showGoogleSetupDot: false,
-                openedMenus: ['admin-operations', 'module-management', 'project-management'],
+                openedMenus: ['admin-operations'],
                 userPermissions: [],
-                userRoles: [],
-                addProjectDialogVisible: false,
-                addProjectForm: {
-                    name: ''
-                },
-                addProjectRules: {
-                    name: [
-                        { required: true, message: '请输入项目名称', trigger: 'blur' },
-                        { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
-                    ]
-                },
-                // 新增：用于存储项目列表的数组
-                projects: []
+                userRoles: []
             };
         },
         methods: {
@@ -278,66 +203,6 @@
                 }
                 return this.userRoles.includes(role);
             },
-            showAddProjectDialog() {
-                this.addProjectDialogVisible = true;
-                this.$nextTick(() => {
-                    if (this.$refs.addProjectForm) {
-                        this.$refs.addProjectForm.resetFields();
-                    }
-                });
-            },
-            handleAddProjectDialogClose() {
-                this.addProjectDialogVisible = false;
-                if (this.$refs.addProjectForm) {
-                    this.$refs.addProjectForm.resetFields();
-                }
-            },
-            confirmAddProject() {
-                this.$refs.addProjectForm.validate((valid) => {
-                    if (valid) {
-                        axios.post('/project/create', this.addProjectForm)
-                            .then(response => {
-                                if (response.data.code === 200) {
-                                    this.$message.success('项目创建成功！');
-                                    this.addProjectDialogVisible = false;
-                                    // 重新获取项目列表并刷新当前 tab
-                                    this.fetchProjects();
-                                } else {
-                                    this.$message.error(response.data.msg || '项目创建失败');
-                                }
-                            })
-                            .catch(error => {
-                                this.$message.error('请求失败：' + (error.response?.data?.msg || error.message));
-                            });
-                    } else {
-                        return false;
-                    }
-                });
-            },
-            // 获取项目列表的方法
-            fetchProjects() {
-                axios.get('/project/list')
-                    .then(response => {
-                        if (response.data && response.data.code === 200) {
-                            this.projects = response.data.data || [];
-                            // 如果当前激活的 tab 是项目列表，则刷新它
-                            if (this.activeTab === '/project/list.html') {
-                                this.refreshTab('/project/list.html');
-                            }
-                        } else {
-                            this.$message.error(response.data.msg || '获取项目列表失败！');
-                        }
-                    })
-                    .catch(error => {
-                        this.$message.error('获取项目列表失败！' + (error.response?.data?.msg || error.message));
-                    });
-            },
-            refreshTab(url) {
-                const iframe = document.querySelector(`iframe[src="${url}"]`);
-                if (iframe) {
-                    iframe.contentWindow.location.reload();
-                }
-            },
             openTab(title, url) {
                 console.log("Clicked Tab:", title, url);
                 this.activeTab = url;
@@ -345,11 +210,9 @@
                 if (!exist) {
                     this.tabs.push({ title, name: url, url });
                 }
+                // 自动展开管理员操作菜单
                 if (url.startsWith('admin/') && !this.openedMenus.includes('admin-operations')) {
                     this.openedMenus.push('admin-operations');
-                }
-                if (url.startsWith('module/') && !this.openedMenus.includes('module-management')) {
-                    this.openedMenus.push('module-management');
                 }
             },
             removeTab(targetName) {
@@ -380,12 +243,12 @@
                             localStorage.setItem("userRoles", JSON.stringify(this.userRoles));
                             localStorage.setItem("userPermissions", JSON.stringify(this.userPermissions));
                             localStorage.setItem("user", JSON.stringify(response.data.data.user));
-                            this.showGoogleSetupDot = response.data.data.user.googleSecretKey === null;
-                            this.userRole = this.userRoles.includes('root') ? 'root' : (this.userRoles.includes('admin') ? 'admin' : 'user');
-                            this.$message.success("刷新成功！");
 
-                            // 在登录成功后获取项目列表
-                            this.fetchProjects();
+                            // 判断用户角色
+                            this.userRole = this.userRoles.includes('root') ? 'root' :
+                                (this.userRoles.includes('admin') ? 'admin' : 'user');
+
+                            this.$message.success("登录成功！");
                         }
                     })
                     .catch(error => {
